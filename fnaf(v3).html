@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIVE NIGHTS AT GEMNI'S</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --term-green: #33ff00;
+            --term-red: #ff3300;
+            --door-gray: #444;
+        }
+
+        body {
+            background-color: #000;
+            color: var(--term-green);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- PRE-GAME SCREENS --- */
+        #menu-screen, #custom-night-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+        #custom-night-screen {
+            display: none; /* Hidden by default */
+        }
+        .menu-btn {
+            background: #222;
+            color: white;
+            border: 2px solid #555;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1.2em;
+        }
+        .menu-btn:hover { background: #444; border-color: #fff; }
+        
+        /* Custom Night Styles */
+        .ai-controls {
+            margin-top: 20px;
+            border: 1px solid #555;
+            padding: 20px;
+            text-align: left;
+        }
+        .ai-control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ai-control-group label {
+            width: 100px;
+            color: var(--term-green);
+        }
+        .ai-control-group input[type="number"] {
+            width: 50px;
+            padding: 5px;
+            border: 1px solid #555;
+            background: #111;
+            color: white;
+            font-family: inherit;
+        }
+        .ai-start-btn {
+            margin-top: 20px;
+        }
+
+
+        /* CRT Effect Overlay */
+        #crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- OFFICE VIEW --- */
+        #office-view {
+            width: 80%;
+            height: 80%;
+            border: 2px solid #222;
+            position: relative;
+            background: #111;
+            display: none; 
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .door-frame {
+            width: 15%;
+            height: 100%;
+            background: #222;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #555;
+        }
+
+        .door-plate {
+            width: 100%;
+            height: 0%;
+            background: #555;
+            transition: height 0.2s;
+            position: absolute;
+            top: 0;
+            z-index: 2;
+        }
+
+        .door-plate.closed {
+            height: 100%;
+            background: repeating-linear-gradient(45deg, #333, #333 10px, #222 10px, #222 20px);
+        }
+
+        .hall-light {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background: rgba(0,0,0,0.95);
+            z-index: 1;
+        }
+
+        .hall-light.lit {
+            background: rgba(255, 255, 200, 0.2);
+        }
+
+        .animatronic-alert {
+            position: absolute;
+            top: 20px;
+            width: 90%;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--term-red);
+            z-index: 3; 
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #fff;
+            padding: 10px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        button:active { background: #555; }
+        button.active-state { background: var(--term-green); color: black; border-color: var(--term-green); }
+        button.active-light { background: #fff; color: black; }
+
+        /* --- MAIN DESK AREA --- */
+        #desk-area {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        
+        #desk-info {
+            position: absolute;
+            top: 10px;
+            text-align: center;
+        }
+        #desk-info .splash-text {
+            font-size: 0.9em;
+            color: #777;
+            margin-top: 5px;
+        }
+
+
+        #fan {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #444;
+            border-radius: 50%;
+            margin-bottom: 20px;
+            animation: spin 0.5s linear infinite;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* --- UI ELEMENTS --- */
+        #ui-layer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            text-align: left;
+            z-index: 100;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid var(--term-green);
+        }
+
+        #time-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2em;
+            z-index: 100;
+        }
+
+        #usage-bar span {
+            display: inline-block;
+            width: 20px;
+            height: 10px;
+            background: #222;
+            margin-right: 2px;
+        }
+        #usage-bar span.active { background: var(--term-green); }
+        #usage-bar span.high { background: var(--term-red); }
+
+        /* --- CAMERA SYSTEM --- */
+        #camera-trigger {
+            position: absolute;
+            bottom: 10px;
+            width: 300px;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid #fff;
+            color: #fff;
+            cursor: pointer;
+            z-index: 90;
+        }
+        #camera-trigger:hover { background: rgba(255,255,255,0.3); }
+
+        #camera-system {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000;
+            display: none;
+            z-index: 80;
+        }
+
+        #cam-view {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #static-screen {
+            position: absolute;
+            top:0; left:0; width:100%; height:100%;
+            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZmlsdGVyIGlkPSJneiI+PHZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuNjUiIG51b09jdGF2ZXM9IjMiIHN0aXRjaFRpbGVzPSJzdGl0Y2giLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjZykiIG9wYWNpdHk9IjAuMTUiLz48L2ZpbHRlcj48L3N2Zz4=');
+            opacity: 0.15;
+            pointer-events: none;
+            animation: noise 0.2s infinite steps(2);
+        }
+        @keyframes noise { 0% { transform: translate(0,0); } 100% { transform: translate(10px, 10px); } }
+
+        #cam-content {
+            font-size: 1.5em; 
+            color: #fff;
+            text-align: center;
+            white-space: pre; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #cam-content .anim-sprite {
+            color: yellow; 
+            margin: 10px 0;
+            padding: 5px;
+            border: 1px solid #333;
+            background: rgba(0,0,0,0.5);
+        }
+        #cam-content .anim-sprite pre {
+            margin: 0; /* Remove margin inside pre for tighter packing */
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 250px;
+            height: 200px;
+            border: 1px solid #555;
+            background: rgba(0,0,0,0.8);
+        }
+
+        .cam-btn {
+            position: absolute;
+            width: 30px;
+            height: 20px;
+            background: #333;
+            border: 1px solid #777;
+            font-size: 10px;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cam-btn.active { background: var(--term-green); color: #000; }
+
+        /* Jumpscare & Game Over */
+        #jumpscare-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            animation: flicker 0.1s infinite; 
+        }
+
+        @keyframes flicker {
+            0% { opacity: 1; }
+            50% { opacity: 0.9; }
+            100% { opacity: 1; }
+        }
+
+        #jumpscare-flash {
+            width: 100%; height: 100%;
+            background: red;
+            animation: flashAndShake 0.4s ease-in-out forwards;
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes flashAndShake {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1) rotate(1deg); opacity: 0.8; background: darkred; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        #game-over-screen, #win-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 2001;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        /* --- NEW SOUND OVERLAY STYLE --- */
+        #sound-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 5000; /* Highest Z-index to cover everything */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--term-green);
+            font-size: 2em;
+            text-align: center;
+            cursor: pointer;
+            animation: pulse 1.5s infinite; /* Added a subtle pulse effect */
+        }
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="crt-overlay"></div>
+
+<div id="sound-overlay">
+    <p>CLICK ANYWHERE TO ENABLE SOUND</p>
+</div>
+<audio id="fnafDoorClose" src="https://static.wikia.nocookie.net/freddy-fazbears-pizza/images/e/e1/SFXBible_12478.ogg/revision/latest?cb=20140912033845" type="audio/ogg"></audio>
+
+<div id="game-container">
+
+    <div id="menu-screen">
+        <h1>FIVE NIGHTS AT GEMNI'S</h1>
+        <button class="menu-btn" id="btn-start-campaign">START NIGHT 1 (Campaign)</button>
+        <button class="menu-btn" id="btn-show-custom">CUSTOM NIGHT</button>
+        <p style="margin-top: 50px; color:#555">Hint: Ctrl speeds up time!</p>
+        <p style="color:#555">Try Konami Code anywhere!</p>
+    </div>
+
+    <div id="custom-night-screen">
+        <h1>CUSTOM NIGHT (AI 0-20)</h1>
+        <div class="ai-controls">
+            <div class="ai-control-group">
+                <label for="ai-freddy">GEMINI (G):</label>
+                <input type="number" id="ai-freddy" value="0" min="0" max="20">
+            </div>
+            <div class="ai-control-group">
+                <label for="ai-bonnie">CHATGPT (C):</label>
+                <input type="number" id="ai-bonnie" value="0" min="0" max="20">
+            </div>
+            <div class="ai-control-group">
+                <label for="ai-chica">COPILOT (M):</label>
+                <input type="number" id="ai-chica" value="0" min="0" max="20">
+            </div>
+            <div class="ai-control-group">
+                <label for="ai-foxy">META AI (M):</label>
+                <input type="number" id="ai-foxy" value="0" min="0" max="20">
+            </div>
+            <button class="menu-btn ai-start-btn" id="btn-start-custom">START CUSTOM NIGHT</button>
+            <button class="menu-btn ai-start-btn" id="btn-back-menu">BACK</button>
+        </div>
+    </div>
+
+
+    <div id="jumpscare-overlay"><div id="jumpscare-flash"></div></div>
+    <div id="game-over-screen">
+        <h1>GAME OVER</h1>
+        <p id="death-reason"></p>
+        <button onclick="location.reload()">MAIN MENU</button>
+    </div>
+    <div id="win-screen">
+        <h1 style="color:var(--term-green)">6:00 AM</h1>
+        <p>You survived the night.</p>
+        <p id="night-completed-message"></p>
+        <button id="next-night-btn">CONTINUE</button>
+        <button id="restart-btn" style="display:none;">MAIN MENU</button>
+    </div>
+
+    <div id="time-display">12 AM</div>
+    <div id="ui-layer">
+        <div>Night: <span id="current-night-display">1</span></div>
+        <div>Power Left: <span id="power-pct">100</span>%</div>
+        <div>Usage: <div id="usage-bar" style="display:inline-block"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div id="office-view">
+        <div class="door-frame" id="left-frame">
+            <div class="animatronic-alert" id="left-alert"></div> 
+            <div class="hall-light" id="left-hall-light"></div>
+            <div class="door-plate" id="left-door-plate"></div>
+            <div class="controls">
+                <button id="btn-door-left" onclick="toggleDoor('left')">DOOR</button>
+                <button id="btn-light-left" onclick="toggleLight('left')">LIGHT</button>
+            </div>
+        </div>
+
+        <div id="desk-area">
+            <div id="desk-info">
+                <div style="margin-bottom:5px; color:#555;">SECURITY OFFICE</div>
+                <div class="splash-text" id="splash-text-display"></div>
+            </div>
+            <div id="fan"></div>
+        </div>
+
+        <div class="door-frame" id="right-frame">
+            <div class="animatronic-alert" id="right-alert"></div> 
+            <div class="hall-light" id="right-hall-light"></div>
+            <div class="door-plate" id="right-door-plate"></div>
+            <div class="controls">
+                <button id="btn-door-right" onclick="toggleDoor('right')">DOOR</button>
+                <button id="btn-light-right" onclick="toggleLight('right')">LIGHT</button>
+            </div>
+        </div>
+    </div>
+
+    <button id="camera-trigger" onclick="toggleCameraSystem()" style="display:none;">[ MONITOR ]</button>
+
+    <div id="camera-system">
+        <div id="cam-view">
+            <div id="static-screen"></div>
+            <div id="cam-content">CAM 1A<br>SHOW STAGE</div>
+        </div>
+        
+        <div id="map">
+            <div class="cam-btn" style="top:10px; left:60px;" onclick="switchCam('1A')" id="btn-1A">1A</div> 
+            <div class="cam-btn" style="top:10px; left:20px;" onclick="switchCam('1B')" id="btn-1B">1B</div> 
+            <div class="cam-btn" style="top:10px; left:120px;" onclick="switchCam('1C')" id="btn-1C">1C</div> 
+            <div class="cam-btn" style="top:40px; left:10px;" onclick="switchCam('5')" id="btn-5">5</div> 
+            <div class="cam-btn" style="top:50px; left:60px;" onclick="switchCam('2A')" id="btn-2A">2A</div> 
+            <div class="cam-btn" style="top:50px; left:150px;" onclick="switchCam('4A')" id="btn-4A">4A</div> 
+            <div class="cam-btn" style="top:80px; left:60px;" onclick="switchCam('2B')" id="btn-2B">2B</div> 
+            <div class="cam-btn" style="top:80px; left:150px;" onclick="switchCam('4B')" id="btn-4B">4B</div> 
+            <div class="cam-btn" style="top:80px; left:200px;" onclick="switchCam('6')" id="btn-6">6</div> 
+            <div class="cam-btn" style="top:110px; left:10px;" onclick="switchCam('3')" id="btn-3">3</div> 
+            <div class="cam-btn" style="top:110px; left:180px;" onclick="switchCam('7')" id="btn-7">7</div> 
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* ---------------------------------
+    --- GLOBAL STATE AND FUNCTIONS ---
+    --------------------------------- */
+    let gameActive = false; 
+    let soundEnabled = false; 
+    let currentNight = 0; 
+    let power = 100;
+    let time = 0; 
+    let usage = 1;
+    let cameraOpen = false;
+    let currentCam = "1A";
+    let isCampaign = false; 
+    let animatronics = {}; 
+    let customAILevels = { GEMINI: 0, CHATGPT: 0, COPILOT: 0, META_AI: 0 }; 
+
+    const state = {
+        left: { door: false, light: false },
+        right: { door: false, light: false }
+    };
+
+    let speedMultiplier = 1;
+    let gameLoopInterval; 
+    let powerLoopInterval; 
+    
+    // --- 🔑 KONAMI CODE LOGIC ---
+    const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+    let pressedKeys = [];
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
+            speedMultiplier = 10;
+            if (gameActive) startGameIntervals();
+        }
+        
+        const key = event.code; 
+        if (event.target.tagName === 'INPUT') return;
+
+        pressedKeys.push(key);
+        if (pressedKeys.length > konamiSequence.length) {
+            pressedKeys.shift(); 
+        }
+
+        if (pressedKeys.length === konamiSequence.length) {
+            let match = true;
+            for (let i = 0; i < konamiSequence.length; i++) {
+                if (pressedKeys[i] !== konamiSequence[i]) {
+                    match = false;
+                    break;
+                }
+            }
+            
+            if (match) {
+                console.log("Konami Code Activated!");
+                if (gameActive) {
+                    alertUser("Konami Code: Night Skipped!");
+                    winGame();
+                } else if (document.getElementById('custom-night-screen').style.display === 'flex') {
+                    document.getElementById('ai-freddy').value = 1;
+                    document.getElementById('ai-bonnie').value = 9;
+                    document.getElementById('ai-chica').value = 8;
+                    document.getElementById('ai-foxy').value = 7;
+                    alertUser("Konami Code: 1/9/8/7 AI values set!");
+                } else {
+                     alertUser("Konami Code Entered!");
+                }
+                pressedKeys = []; 
+            }
+        }
+    });
+    
+    document.addEventListener('keyup', (event) => {
+        if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
+            speedMultiplier = 1;
+            if (gameActive) startGameIntervals();
+        }
+    });
+
+    // --- 🔊 AUDIO CONTEXT AND SYNTHESIS ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playTone(freq, type, duration) {
+        if (!soundEnabled) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // Play Sound Function (Door backup sound remains removed)
+    function playSound(type) {
+        if (!soundEnabled) return;
+        
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        switch (type) {
+            case 'button':
+                playTone(800, 'square', 0.1); 
+                break;
+            case 'door':
+                const doorAudio = document.getElementById('fnafDoorClose');
+                if (doorAudio) {
+                    doorAudio.currentTime = 0;
+                    doorAudio.play().catch(e => {
+                        console.warn("Custom door audio failed to play.", e);
+                        // SILENCE
+                    });
+                } 
+                break;
+            case 'light':
+                playTone(200, 'sawtooth', 0.1); 
+                break;
+            case 'cam':
+                playTone(600, 'sine', 0.15); 
+                break;
+            case 'jumpscare':
+                const bufferSize = audioCtx.sampleRate * 2; 
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+                noise.connect(audioCtx.destination);
+                noise.start();
+                break;
+        }
+    }
+    
+    // --- New function for generic UI buttons (Menu, Cam Map) ---
+    function playButtonSound() {
+        playSound('button');
+    }
+    
+    function enableSound() {
+        if (soundEnabled) return;
+        soundEnabled = true;
+        document.getElementById('sound-overlay').style.display = 'none';
+        
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        playTone(440, 'sine', 0.5);
+
+        // ONLY attach the generic button sound to non-door/light controls
+        document.querySelectorAll(
+            '.menu-btn, .ai-start-btn, .cam-btn, #camera-trigger'
+        ).forEach(button => {
+            button.removeEventListener('click', playButtonSound); // Clean slate
+            button.addEventListener('click', playButtonSound);
+        });
+        
+        // Door and Light buttons now rely only on their specific handler calls (toggleDoor/toggleLight)
+        
+        setRandomSplashText();
+    }
+    
+    document.getElementById('sound-overlay').addEventListener('click', enableSound);
+    
+    // --- SPLASH TEXTS ---
+    const splashTexts = [
+        "Now featuring Custom Night!",
+        "Powered by a very dedicated user!",
+        "Don't run out of battery!",
+        "Try 1/9/8/7 Mode!",
+        "Control is your friend!",
+        "100% not made by Gemini AI..." 
+    ];
+
+    function setRandomSplashText() {
+        const randomIndex = Math.floor(Math.random() * splashTexts.length);
+        document.getElementById('splash-text-display').innerText = splashTexts[randomIndex];
+    }
+
+
+    function startGameIntervals() {
+        if (gameLoopInterval) clearInterval(gameLoopInterval);
+        if (powerLoopInterval) clearInterval(powerLoopInterval);
+
+        gameLoopInterval = setInterval(secondTick, 1000 / speedMultiplier); 
+        powerLoopInterval = setInterval(powerTick, 200 / speedMultiplier);
+    }
+
+    /* ---------------------------------
+    --- MENU NAVIGATION AND STARTUP ---
+    --------------------------------- */
+    
+    function initializeGameState(nightNum, campaignMode, aiOverride = null) {
+        currentNight = nightNum;
+        isCampaign = campaignMode;
+        
+        // --- 1. Reset Game State ---
+        time = 0;
+        power = 100;
+        document.getElementById('power-pct').innerText = '100';
+        document.getElementById('time-display').innerText = '12 AM';
+        document.getElementById('current-night-display').innerText = nightNum > 0 ? nightNum : 'Custom';
+        
+        // --- 2. Initialize Animatronics ---
+        animatronics = {
+            gemini: { name: "GEMINI", location: "1A", path: ["1A", "1B", "7", "6", "4A", "4B", "OFFICE"], moveTimer: 0 },
+            chatgpt: { name: "CHATGPT", location: "1A", path: ["1A", "5", "1B", "2A", "3", "2B", "OFFICE"], moveTimer: 0 },
+            copilot:  { name: "COPILOT",  location: "1A", path: ["1A", "1B", "7", "6", "4A", "4B", "OFFICE"], moveTimer: 0 },
+            meta_ai:   { name: "META_AI",   location: "1C", stage: 0, moveTimer: 0 } 
+        };
+
+        if (aiOverride) {
+            customAILevels = aiOverride;
+        }
+
+        // --- 3. Update UI ---
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('custom-night-screen').style.display = 'none';
+        document.getElementById('office-view').style.display = 'flex';
+        document.getElementById('camera-trigger').style.display = 'block';
+
+        // --- 4. Start Loops ---
+        gameActive = true;
+        startGameIntervals();
+    }
+    
+    function startCampaign(night) {
+        initializeGameState(night, true);
+    }
+
+    function showCustomNight() {
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('custom-night-screen').style.display = 'flex';
+    }
+
+    function startCustomNight() {
+        const ai = {
+            GEMINI: parseInt(document.getElementById('ai-freddy').value) || 0,
+            CHATGPT: parseInt(document.getElementById('ai-bonnie').value) || 0,
+            COPILOT: parseInt(document.getElementById('ai-chica').value) || 0,
+            META_AI: parseInt(document.getElementById('ai-foxy').value) || 0
+        };
+
+        if (ai.GEMINI === 1 && ai.CHATGPT === 9 && ai.COPILOT === 8 && ai.META_AI === 7) {
+            triggerJumpscare("GOLDEN FREDDY"); 
+            return;
+        }
+
+        initializeGameState(0, false, ai); 
+        document.getElementById('next-night-btn').style.display = 'none';
+        document.getElementById('restart-btn').style.display = 'block';
+    }
+
+    function startNextNight() {
+        if (isCampaign && currentNight < 5) {
+            document.getElementById('win-screen').style.display = 'none';
+            initializeGameState(currentNight + 1, true);
+        } else {
+            location.reload(); 
+        }
+    }
+
+
+    /* ---------------------------------
+    --- AI LEVEL DETERMINATION ---
+    --------------------------------- */
+    
+    const campaignSettings = {
+        1: [0, 0, 0, 0, 3, 3, 1, 1, 4, 4, 2, 2, 5, 5, 3, 3], 
+        2: [3, 1, 1, 0, 5, 3, 3, 1, 6, 4, 4, 2, 8, 6, 6, 3],
+        3: [5, 5, 5, 2, 8, 8, 8, 4, 10, 10, 10, 6, 12, 12, 12, 8],
+        4: [10, 8, 8, 4, 12, 10, 10, 6, 14, 12, 12, 8, 16, 14, 14, 10],
+        5: [15, 12, 12, 6, 18, 15, 15, 10, 20, 18, 18, 12, 20, 20, 20, 15]
+    };
+
+    function getAILevel(animName) {
+        if (currentNight === 0) {
+            return customAILevels[animName];
+        } else if (currentNight >= 1 && currentNight <= 5) {
+            const hour = Math.floor(time / 90);
+            let levelIndex = 0; 
+            if(hour >= 3 && hour < 4) levelIndex = 1; 
+            else if(hour >= 4 && hour < 5) levelIndex = 2; 
+            else if(hour >= 5) levelIndex = 3; 
+
+            const animIndex = animName === "GEMINI" ? 0 : 
+                              animName === "CHATGPT" ? 1 : 
+                              animName === "COPILOT" ? 2 : 
+                              animName === "META_AI" ? 3 : 0;
+                               
+            return campaignSettings[currentNight][(levelIndex * 4) + animIndex];
+        }
+        return 0;
+    }
+
+
+    /* ---------------------------------
+    --- CORE GAME LOOP & AI LOGIC ---
+    --------------------------------- */
+
+    function powerTick() {
+        if(!gameActive) return;
+        
+        let drainAmount = 0.01; 
+        if(cameraOpen) drainAmount += 0.03;
+        if(state.left.door) drainAmount += 0.03;
+        if(state.right.door) drainAmount += 0.03;
+        if(state.left.light) drainAmount += 0.03;
+        if(state.right.light) drainAmount += 0.03;
+
+        power -= drainAmount;
+        if(power <= 0) {
+            power = 0;
+            triggerPowerOutage();
+        }
+        document.getElementById('power-pct').innerText = Math.floor(power);
+        updateUsage(); 
+    }
+
+    function secondTick() {
+        if(!gameActive) return;
+
+        time++; 
+        
+        let hour = Math.floor(12 + (time / 90));
+        if(hour > 12) hour -= 12;
+
+        document.getElementById('time-display').innerText = `${hour} AM`;
+
+        if(time >= 540) { 
+            winGame();
+        }
+        updateAI();
+    }
+
+    function updateAI() {
+        if (getAILevel("CHATGPT") > 0) moveAnimatronic(animatronics.chatgpt, "CHATGPT");
+        if (getAILevel("COPILOT") > 0) moveAnimatronic(animatronics.copilot, "COPILOT");
+        if (getAILevel("GEMINI") > 0) moveAnimatronic(animatronics.gemini, "GEMINI");
+        if (getAILevel("META_AI") > 0) updateFoxy();
+        
+        if(cameraOpen) updateCamVisuals();
+    }
+
+    function moveAnimatronic(anim, animNameKey) {
+        if(anim.location === "2B" || anim.location === "4B") {
+            attemptEntry(anim, animNameKey);
+            return;
+        }
+        const currentLevel = getAILevel(animNameKey);
+        if(Math.random() * 20 < currentLevel) {
+            let currIdx = anim.path.indexOf(anim.location);
+            if(currIdx < anim.path.length - 1) {
+                if(anim.name === "GEMINI" && cameraOpen && currentCam === anim.location) return;
+                anim.location = anim.path[currIdx + 1];
+            }
+        }
+    }
+
+    function updateFoxy() {
+        const currentLevel = getAILevel("META_AI");
+        if(Math.random() * 20 < currentLevel) {
+            if(animatronics.meta_ai.stage < 3) {
+                if(!cameraOpen) animatronics.meta_ai.stage++; 
+            } else if(animatronics.meta_ai.stage === 3) {
+                animatronics.meta_ai.location = "2A"; 
+                triggerFoxyRun();
+            }
+        }
+    }
+
+    function triggerFoxyRun() {
+        animatronics.meta_ai.stage = 4;
+        alertUser("RUNNING SOUNDS IN WEST HALL (META AI RUNNING)!");
+        setTimeout(() => {
+            if(animatronics.meta_ai.stage === 4) {
+                if(state.left.door) {
+                    power -= 10; 
+                    animatronics.meta_ai.stage = 0; 
+                    animatronics.meta_ai.location = "1C";
+                    alertUser("BANG! META AI hit the door!");
+                } else {
+                    triggerJumpscare("META AI");
+                }
+            }
+        }, 2500 / speedMultiplier);
+    }
+
+    function attemptEntry(anim, animNameKey) {
+        const currentLevel = getAILevel(animNameKey);
+        if(Math.random() * 20 < currentLevel) { 
+            let side = (anim.location === "2B") ? 'left' : 'right';
+            if(!state[side].door) {
+                triggerJumpscare(anim.name);
+            } else {
+                anim.location = "1B"; 
+                alertUser(`${anim.name} left the door.`);
+            }
+        }
+    }
+
+    /* ---------------------------------
+       --- UI AND VISUALS ---
+       --------------------------------- */
+       
+    // Updated ASCII Art
+    const animSprites = {
+        "GEMINI": 
+`
+⠀⠀⠀⠀⠀⣀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢠⣿⡄⠀⠀⠀⠀
+⠀⠀⠀⣠⣾⣿⣿⣄⠀⠀⠀
+⠰⠖⡻⣟⣿⣯⣿⢿⣿⠶⠆
+⠀⠀⠀⠙⠾⣽⡿⠋⠀⠀⠀
+⠀⠀⠀⠀⠘⣿⠃⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀
+`,
+        "CHATGPT":
+`
+⠀⠀⣠⠖⠒⣲⣤⣄⡀⠀
+⣰⢾⡇⢰⠾⢁⣀⡀⠸⡆
+⡇⢸⡇⢸⠒⠓⡤⣉⠓⣇
+⢹⢤⣉⠛⢤⠤⡇⢸⡁⢸
+⠸⡆⠈⠉⢁⡶⠇⢸⡶⠇
+⠀⠈⠙⠛⠧⠤⠴⠋⠀⠀
+`,
+        "COPILOT":
+`
+⠀⠀⣄⣠⣀⡄⣤⣤⣄⠀⠀⠀
+⠀⢾⡹⢧⠯⣝⠿⠿⡿⣆⣀⠀
+⡈⠧⡙⢎⠱⠂⠀⣰⡿⣽⣻⢿
+⡁⠀⠁⠀⠈⠀⢠⡿⣽⣳⢯⡟
+⠀⠀⠐⡶⣶⢶⢫⣝⡳⢯⡿⠀
+⠀⠀⠀⠈⠛⠃⠂⠈⠑⠋⠀⠀
+`,
+        "META_AI":
+`
+⠀⠀⢀⣤⣶⣶⣶⣶⣤⡀⠀⠀
+⠀⣴⡿⠋⠁⠀⠀⠀⠙⢞⣦⡀
+⢸⣿⠁⠀⠀⠀⠀⠀⠀⠀⣿⡇
+⢰⢋⠀⠀⠀⠀⠀⠀⠀⠀⣾⡇
+⠀⢋⡑⢄⠀⠀⠀⠀⣠⣾⡟⠁
+⠀⠀⠁⠊⠖⠿⠿⠿⠟⠉⠀⠀
+`,
+        "GOLDEN FREDDY":
+`
+    (  )   (  )
+     ( X X )
+   /|  _  |\\
+  // |___| \\\\
+ //          \\\\
+//  IT'S ME  \\\\
+`
+    };
+
+    function checkDoorLights(side) {
+        const alertDiv = document.getElementById(`${side}-alert`);
+        let text = "";
+        if(side === "left") {
+            if(animatronics.chatgpt.location === "2B") text = "CHATGPT IS HERE!";
+        } else {
+            if(animatronics.copilot.location === "4B") text = "COPILOT IS HERE!";
+        }
+        alertDiv.innerText = text;
+    }
+    
+    function toggleDoor(side) {
+        if(!gameActive || power <= 0) return;
+        state[side].door = !state[side].door;
+        const plate = document.getElementById(`${side}-door-plate`);
+        const btn = document.getElementById(`btn-door-${side}`);
+        
+        if(state[side].door) {
+            plate.classList.add('closed');
+            btn.classList.add('active-state');
+            playSound('door'); // Plays FNaF door sound, no extra 'button' sound
+        } else {
+            plate.classList.remove('closed');
+            btn.classList.remove('active-state');
+            playSound('door'); // Plays FNaF door sound, no extra 'button' sound
+        }
+        updateUsage();
+    }
+    
+    function toggleLight(side) {
+        if(!gameActive || power <= 0) return;
+        const other = side === 'left' ? 'right' : 'left';
+        if(state[other].light) {
+            state[other].light = false;
+            updateLightVisuals(other);
+        }
+        state[side].light = !state[side].light;
+        updateLightVisuals(side);
+        updateUsage();
+        if(state[side].light) {
+            playSound('light'); // Plays light sound, no extra 'button' sound
+            checkDoorLights(side);
+        } else {
+            document.getElementById(`${side}-alert`).innerText = "";
+        }
+    }
+
+    function updateLightVisuals(side) {
+        const lightDiv = document.getElementById(`${side}-hall-light`);
+        const btn = document.getElementById(`btn-light-${side}`);
+        
+        if(state[side].light) {
+            lightDiv.classList.add('lit');
+            btn.classList.add('active-light');
+        } else {
+            lightDiv.classList.remove('lit');
+            btn.classList.remove('active-light');
+        }
+    }
+
+    function toggleCameraSystem() {
+        if(!gameActive || power <= 0) return;
+        cameraOpen = !cameraOpen;
+        const sys = document.getElementById('camera-system');
+        sys.style.display = cameraOpen ? 'block' : 'none';
+        
+        playSound('cam'); // Plays cam sound, which is fine
+        
+        if(cameraOpen) {
+            state.left.light = false;
+            state.right.light = false;
+            updateLightVisuals('left');
+            updateLightVisuals('right');
+            document.getElementById('left-alert').innerText = "";
+            document.getElementById('right-alert').innerText = "";
+        }
+        
+        updateUsage();
+        if(cameraOpen) updateCamVisuals();
+    }
+
+    function switchCam(id) {
+        if(!gameActive) return;
+        currentCam = id;
+        
+        playSound('cam'); // Plays cam sound, which is fine
+        
+        document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${id}`).classList.add('active');
+        
+        updateCamVisuals();
+    }
+
+    function updateUsage() {
+        usage = 1; 
+        if(cameraOpen) usage += 1; 
+        if(state.left.door) usage += 1; 
+        if(state.right.door) usage += 1; 
+        if(state.left.light) usage += 1; 
+        if(state.right.light) usage += 1; 
+
+        const bars = document.querySelectorAll('#usage-bar span');
+        bars.forEach((b, i) => {
+            b.className = "";
+            if(i < usage) b.classList.add(i > 2 ? 'high' : 'active');
+        });
+    }
+
+    const camNames = {
+        "1A": "Show Stage", "1B": "Dining Area", "1C": "Pirate Cove",
+        "2A": "West Hall", "2B": "W. Hall Corner", "3": "Supply Closet",
+        "4A": "East Hall", "4B": "E. Hall Corner", "5": "Backstage",
+        "6": "Kitchen (AUDIO ONLY)", "7": "Restrooms"
+    };
+
+    function updateCamVisuals() {
+        const content = document.getElementById('cam-content');
+        let htmlContent = `CAM ${currentCam}<br>${camNames[currentCam]}<br>`;
+        
+        if(currentCam === "6") {
+             content.innerHTML = htmlContent + "<div class='anim-sprite'>[AUDIO ONLY]<br>...Camera Disabled...</div>";
+             return;
+        }
+
+        let present = [];
+        if(animatronics.gemini.location === currentCam) present.push(animatronics.gemini.name);
+        if(animatronics.chatgpt.location === currentCam) present.push(animatronics.chatgpt.name);
+        if(animatronics.copilot.location === currentCam) present.push(animatronics.copilot.name);
+        
+        let spriteHtml = "";
+
+        if(currentCam === "1C") {
+            const foxyName = animatronics.meta_ai.name;
+            const foxyStage = animatronics.meta_ai.stage;
+
+            if(foxyStage === 0) spriteHtml += "<div class='anim-sprite'>[Curtain Closed]</div>";
+            else if(foxyStage < 3) spriteHtml += `<div class='anim-sprite'><pre>${animSprites[foxyName]}</pre></div>`;
+            else if(foxyStage >= 3) spriteHtml += `<div class='anim-sprite' style="color:red">[IT'S EMPTY! - ${foxyName} RUNNING]</div>`;
+
+        } else {
+            if(present.length > 0) {
+                present.forEach(animName => {
+                    const fontSize = (animName === "GEMINI" || animName === "CHATGPT" || animName === "COPILOT" || animName === "META_AI") ? "1.0em" : "0.8em";
+                    spriteHtml += `<div class='anim-sprite'><pre style="color:red; font-size:${fontSize}">${animSprites[animName]}</pre></div>`;
+                });
+            } else {
+                spriteHtml += "<div class='anim-sprite' style='border:none'>\n(Empty)\n</div>";
+            }
+        }
+
+        if(Math.random() > 0.95) { 
+             htmlContent += "<div class='anim-sprite' style='color:#555; font-size:2em'>NO SIGNAL</div>";
+        } else {
+            htmlContent += spriteHtml;
+        }
+
+        content.innerHTML = htmlContent;
+    }
+
+    /* ---------------------------------
+       --- GAME ENDINGS ---
+       --------------------------------- */
+
+    function triggerPowerOutage() {
+        gameActive = false;
+        clearInterval(gameLoopInterval);
+        clearInterval(powerLoopInterval);
+
+        document.getElementById('office-view').style.opacity = 0.2;
+        document.getElementById('camera-system').style.display = 'none';
+        document.getElementById('ui-layer').style.display = 'none';
+        
+        setTimeout(() => {
+            triggerJumpscare("GEMINI (Power Out)");
+        }, 5000 / speedMultiplier);
+    }
+
+    function triggerJumpscare(who) {
+        if(!gameActive && power > 0) return; 
+        gameActive = false;
+        
+        clearInterval(gameLoopInterval);
+        clearInterval(powerLoopInterval);
+
+        const overlay = document.getElementById('jumpscare-overlay');
+        overlay.style.display = 'flex';
+        
+        const flashDiv = document.getElementById('jumpscare-flash');
+        flashDiv.innerHTML = '';
+        flashDiv.style.background = 'red';
+        
+        if (who === "GOLDEN FREDDY") {
+             flashDiv.style.background = 'black'; 
+             flashDiv.style.animation = 'none';
+             flashDiv.innerHTML = `<pre style="color:yellow; font-size: 2em; text-align:center; opacity:0.8;">${animSprites[who]}</pre>`;
+        } else {
+            flashDiv.style.animation = 'flashAndShake 0.4s ease-in-out forwards';
+        }
+
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('game-over-screen').style.display = 'flex';
+            document.getElementById('death-reason').innerText = `Killed by ${who}`;
+        }, 2000);
+    }
+
+    function winGame() {
+        gameActive = false;
+        clearInterval(gameLoopInterval);
+        clearInterval(powerLoopInterval);
+        
+        document.getElementById('night-completed-message').innerText = `You completed Night ${currentNight > 0 ? currentNight : 'Custom'}!`;
+        document.getElementById('win-screen').style.display = 'flex';
+
+        if (isCampaign && currentNight < 5) {
+            document.getElementById('next-night-btn').innerText = `CONTINUE TO NIGHT ${currentNight + 1}`;
+            document.getElementById('next-night-btn').style.display = 'block';
+            document.getElementById('restart-btn').style.display = 'none';
+        } else {
+            document.getElementById('next-night-btn').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'block';
+        }
+    }
+
+    function alertUser(msg) {
+        console.log(msg);
+    }
+
+    function gameLoop() {
+        requestAnimationFrame(gameLoop);
+    }
+
+    /* ---------------------------------
+       --- EVENT LISTENERS (KONAMI/SPEED) ---
+       --------------------------------- */
+    
+    const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight'];
+    let konamiIndex = 0;
+
+    document.addEventListener('keydown', (e) => {
+        if (!gameActive) return;
+        if (e.key === 'Control' && speedMultiplier === 1) {
+            e.preventDefault(); 
+            speedMultiplier = 5;
+            startGameIntervals();
+            return;
+        }
+
+        if (e.key === konamiCode[konamiIndex]) {
+            konamiIndex++;
+            if (konamiIndex === konamiCode.length) {
+                alertUser("KONAMI CODE ACTIVATED! Skipping to 6 AM...");
+                winGame();
+                konamiIndex = 0;
+            }
+        } else {
+            konamiIndex = 0;
+            if (e.key === konamiCode[0]) {
+                konamiIndex = 1;
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (!gameActive) return;
+        if (e.key === 'Control' && speedMultiplier === 5) {
+            speedMultiplier = 1;
+            startGameIntervals();
+        }
+    });
+
+    /* ---------------------------------
+       --- INITIALIZATION ---
+       --- Using DOMContentLoaded for guaranteed execution ---
+       --------------------------------- */
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        // Hide game view initially 
+        document.getElementById('office-view').style.display = 'none';
+        
+        // Assign event listeners
+        document.getElementById('btn-start-campaign').addEventListener('click', () => { startCampaign(1); playButtonSound(); });
+        document.getElementById('btn-show-custom').addEventListener('click', () => { showCustomNight(); playButtonSound(); });
+        document.getElementById('btn-start-custom').addEventListener('click', () => { startCustomNight(); playButtonSound(); });
+        document.getElementById('btn-back-menu').addEventListener('click', () => {
+            document.getElementById('custom-night-screen').style.display = 'none'; 
+            document.getElementById('menu-screen').style.display = 'flex';
+            playButtonSound();
+        });
+        document.getElementById('next-night-btn').addEventListener('click', () => { startNextNight(); playButtonSound(); });
+        document.getElementById('restart-btn').addEventListener('click', () => { location.reload(); playButtonSound(); });
+
+        switchCam("1A"); 
+        requestAnimationFrame(gameLoop); 
+    });
+</script>
+</body>
+</html>
